@@ -1,0 +1,406 @@
+diff --git a/node_modules/@apollo/client/apollo-client.cjs b/node_modules/@apollo/client/apollo-client.cjs
+index 16b1d19..5e2b482 100644
+--- a/node_modules/@apollo/client/apollo-client.cjs
++++ b/node_modules/@apollo/client/apollo-client.cjs
+@@ -478,6 +478,11 @@ function isField(selection) {
+ function isInlineFragment(selection) {
+     return selection.kind === "InlineFragment";
+ }
++function isAsScalar(selection) {
++    return (isField(selection) &&
++        selection.directives &&
++        selection.directives.some(function (selection) { return selection.name && selection.name.value === "asScalar"; }));
++}
+ 
+ function checkDocument(doc) {
+     invariant(doc && doc.kind === "Document", 73);
+@@ -2370,7 +2375,7 @@ function selectionSetMatchesResult(selectionSet, result, variables) {
+                 if (isField(field) && shouldInclude(field, variables)) {
+                     var key = resultKeyNameFromField(field);
+                     return (hasOwn.call(result, key) &&
+-                        (!field.selectionSet ||
++                        (!field.selectionSet || !isAsScalar(field) ||
+                             selectionSetMatchesResult(field.selectionSet, result[key], variables)));
+                 }
+                 return true;
+@@ -3223,6 +3228,9 @@ var StoreReader = (function () {
+             if (item === null) {
+                 return null;
+             }
++            if (isAsScalar(field)) {
++                return item;
++            }
+             if (isArray(item)) {
+                 return handleMissing(_this.executeSubSelectedArray({
+                     field: field,
+@@ -3961,7 +3969,7 @@ var StoreWriter = (function () {
+             if (globalThis.__DEV__ !== false && !context.overwrite) {
+                 var fieldsWithSelectionSets_1 = Object.create(null);
+                 fieldNodeSet.forEach(function (field) {
+-                    if (field.selectionSet) {
++                    if (field.selectionSet && !isAsScalar(field)) {
+                         fieldsWithSelectionSets_1[field.name.value] = true;
+                     }
+                 });
+@@ -4028,6 +4036,7 @@ var StoreWriter = (function () {
+                     : context, childTree);
+                 var childTypename = void 0;
+                 if (field.selectionSet &&
++                    !isAsScalar(field) &&
+                     (isReference(incomingValue) || storeValueIsStoreObject(incomingValue))) {
+                     childTypename = readField("__typename", incomingValue);
+                 }
+@@ -4103,6 +4112,9 @@ var StoreWriter = (function () {
+         if (!field.selectionSet || value === null) {
+             return globalThis.__DEV__ !== false ? cloneDeep(value) : value;
+         }
++        if (isAsScalar(field)) {
++            return cloneDeep(value);
++        }
+         if (isArray(value)) {
+             return value.map(function (item, i) {
+                 var value = _this.processFieldValue(item, field, context, getChildMergeTree(mergeTree, i));
+@@ -5476,6 +5488,9 @@ var LocalState = (function () {
+                         if (!field.selectionSet) {
+                             return result;
+                         }
++                        if (isAsScalar(field)) {
++                            return result;
++                        }
+                         if (result == null) {
+                             return result;
+                         }
+diff --git a/node_modules/@apollo/client/cache/cache.cjs b/node_modules/@apollo/client/cache/cache.cjs
+index da8bf03..f156077 100644
+--- a/node_modules/@apollo/client/cache/cache.cjs
++++ b/node_modules/@apollo/client/cache/cache.cjs
+@@ -180,7 +180,7 @@ function selectionSetMatchesResult(selectionSet, result, variables) {
+                 if (utilities.isField(field) && utilities.shouldInclude(field, variables)) {
+                     var key = utilities.resultKeyNameFromField(field);
+                     return (hasOwn.call(result, key) &&
+-                        (!field.selectionSet ||
++                        (!field.selectionSet || !utilities.isAsScalar(field) ||
+                             selectionSetMatchesResult(field.selectionSet, result[key], variables)));
+                 }
+                 return true;
+@@ -1033,6 +1033,9 @@ var StoreReader = (function () {
+             if (item === null) {
+                 return null;
+             }
++            if (utilities.isAsScalar(field)) {
++                return item;
++            }
+             if (utilities.isArray(item)) {
+                 return handleMissing(_this.executeSubSelectedArray({
+                     field: field,
+@@ -1771,7 +1774,7 @@ var StoreWriter = (function () {
+             if (globalThis.__DEV__ !== false && !context.overwrite) {
+                 var fieldsWithSelectionSets_1 = Object.create(null);
+                 fieldNodeSet.forEach(function (field) {
+-                    if (field.selectionSet) {
++                    if (field.selectionSet && !utilities.isAsScalar(field)) {
+                         fieldsWithSelectionSets_1[field.name.value] = true;
+                     }
+                 });
+@@ -1838,6 +1841,7 @@ var StoreWriter = (function () {
+                     : context, childTree);
+                 var childTypename = void 0;
+                 if (field.selectionSet &&
++                    !utilities.isAsScalar(field) &&
+                     (utilities.isReference(incomingValue) || storeValueIsStoreObject(incomingValue))) {
+                     childTypename = readField("__typename", incomingValue);
+                 }
+@@ -1913,6 +1917,9 @@ var StoreWriter = (function () {
+         if (!field.selectionSet || value === null) {
+             return globalThis.__DEV__ !== false ? utilities.cloneDeep(value) : value;
+         }
++        if (utilities.isAsScalar(field)) {
++            return utilities.cloneDeep(value);
++        }
+         if (utilities.isArray(value)) {
+             return value.map(function (item, i) {
+                 var value = _this.processFieldValue(item, field, context, getChildMergeTree(mergeTree, i));
+diff --git a/node_modules/@apollo/client/cache/cache.cjs.native.js b/node_modules/@apollo/client/cache/cache.cjs.native.js
+index da8bf03..f156077 100644
+--- a/node_modules/@apollo/client/cache/cache.cjs.native.js
++++ b/node_modules/@apollo/client/cache/cache.cjs.native.js
+@@ -180,7 +180,7 @@ function selectionSetMatchesResult(selectionSet, result, variables) {
+                 if (utilities.isField(field) && utilities.shouldInclude(field, variables)) {
+                     var key = utilities.resultKeyNameFromField(field);
+                     return (hasOwn.call(result, key) &&
+-                        (!field.selectionSet ||
++                        (!field.selectionSet || !utilities.isAsScalar(field) ||
+                             selectionSetMatchesResult(field.selectionSet, result[key], variables)));
+                 }
+                 return true;
+@@ -1033,6 +1033,9 @@ var StoreReader = (function () {
+             if (item === null) {
+                 return null;
+             }
++            if (utilities.isAsScalar(field)) {
++                return item;
++            }
+             if (utilities.isArray(item)) {
+                 return handleMissing(_this.executeSubSelectedArray({
+                     field: field,
+@@ -1771,7 +1774,7 @@ var StoreWriter = (function () {
+             if (globalThis.__DEV__ !== false && !context.overwrite) {
+                 var fieldsWithSelectionSets_1 = Object.create(null);
+                 fieldNodeSet.forEach(function (field) {
+-                    if (field.selectionSet) {
++                    if (field.selectionSet && !utilities.isAsScalar(field)) {
+                         fieldsWithSelectionSets_1[field.name.value] = true;
+                     }
+                 });
+@@ -1838,6 +1841,7 @@ var StoreWriter = (function () {
+                     : context, childTree);
+                 var childTypename = void 0;
+                 if (field.selectionSet &&
++                    !utilities.isAsScalar(field) &&
+                     (utilities.isReference(incomingValue) || storeValueIsStoreObject(incomingValue))) {
+                     childTypename = readField("__typename", incomingValue);
+                 }
+@@ -1913,6 +1917,9 @@ var StoreWriter = (function () {
+         if (!field.selectionSet || value === null) {
+             return globalThis.__DEV__ !== false ? utilities.cloneDeep(value) : value;
+         }
++        if (utilities.isAsScalar(field)) {
++            return utilities.cloneDeep(value);
++        }
+         if (utilities.isArray(value)) {
+             return value.map(function (item, i) {
+                 var value = _this.processFieldValue(item, field, context, getChildMergeTree(mergeTree, i));
+diff --git a/node_modules/@apollo/client/cache/inmemory/helpers.js b/node_modules/@apollo/client/cache/inmemory/helpers.js
+index f52105f..6e8e25a 100644
+--- a/node_modules/@apollo/client/cache/inmemory/helpers.js
++++ b/node_modules/@apollo/client/cache/inmemory/helpers.js
+@@ -1,4 +1,4 @@
+-import { isReference, isField, DeepMerger, resultKeyNameFromField, shouldInclude, isNonNullObject, compact, createFragmentMap, getFragmentDefinitions, isArray, } from "../../utilities/index.js";
++import { isReference, isField, DeepMerger, resultKeyNameFromField, shouldInclude, isNonNullObject, compact, createFragmentMap, getFragmentDefinitions, isAsScalar, isArray, } from "../../utilities/index.js";
+ export var hasOwn = Object.prototype.hasOwnProperty;
+ export function isNullish(value) {
+     return value === null || value === void 0;
+@@ -57,7 +57,7 @@ export function selectionSetMatchesResult(selectionSet, result, variables) {
+                 if (isField(field) && shouldInclude(field, variables)) {
+                     var key = resultKeyNameFromField(field);
+                     return (hasOwn.call(result, key) &&
+-                        (!field.selectionSet ||
++                        (!field.selectionSet || !isAsScalar(field) ||
+                             selectionSetMatchesResult(field.selectionSet, result[key], variables)));
+                 }
+                 return true;
+diff --git a/node_modules/@apollo/client/cache/inmemory/readFromStore.js b/node_modules/@apollo/client/cache/inmemory/readFromStore.js
+index b4c928a..f1c21d9 100644
+--- a/node_modules/@apollo/client/cache/inmemory/readFromStore.js
++++ b/node_modules/@apollo/client/cache/inmemory/readFromStore.js
+@@ -2,7 +2,7 @@ import { __assign } from "tslib";
+ import { invariant, newInvariantError } from "../../utilities/globals/index.js";
+ import { Kind } from "graphql";
+ import { wrap } from "optimism";
+-import { isField, resultKeyNameFromField, isReference, makeReference, shouldInclude, addTypenameToDocument, getDefaultValues, getMainDefinition, getQueryDefinition, getFragmentFromSelection, maybeDeepFreeze, mergeDeepArray, DeepMerger, isNonNullObject, canUseWeakMap, compact, } from "../../utilities/index.js";
++import { isField, resultKeyNameFromField, isReference, makeReference, shouldInclude, addTypenameToDocument, getDefaultValues, getMainDefinition, getQueryDefinition, getFragmentFromSelection, maybeDeepFreeze, mergeDeepArray, DeepMerger, isNonNullObject, canUseWeakMap, compact, isAsScalar, } from "../../utilities/index.js";
+ import { maybeDependOnExistenceOfEntity, supportsResultCaching, } from "./entityStore.js";
+ import { isArray, extractFragmentContext, getTypenameFromStoreObject, shouldCanonizeResults, } from "./helpers.js";
+ import { MissingFieldError } from "../core/types/common.js";
+@@ -216,6 +216,9 @@ var StoreReader = (function () {
+             if (item === null) {
+                 return null;
+             }
++            if (isAsScalar(field)) {
++                return item;
++            }
+             if (isArray(item)) {
+                 return handleMissing(_this.executeSubSelectedArray({
+                     field: field,
+diff --git a/node_modules/@apollo/client/cache/inmemory/writeToStore.js b/node_modules/@apollo/client/cache/inmemory/writeToStore.js
+index 7d020db..8ec8c04 100644
+--- a/node_modules/@apollo/client/cache/inmemory/writeToStore.js
++++ b/node_modules/@apollo/client/cache/inmemory/writeToStore.js
+@@ -3,7 +3,7 @@ import { invariant, newInvariantError } from "../../utilities/globals/index.js";
+ import { equal } from "@wry/equality";
+ import { Trie } from "@wry/trie";
+ import { Kind } from "graphql";
+-import { getFragmentFromSelection, getDefaultValues, getOperationDefinition, getTypenameFromResult, makeReference, isField, resultKeyNameFromField, isReference, shouldInclude, cloneDeep, addTypenameToDocument, isNonEmptyArray, argumentsObjectFromField, } from "../../utilities/index.js";
++import { getFragmentFromSelection, getDefaultValues, getOperationDefinition, getTypenameFromResult, makeReference, isField, resultKeyNameFromField, isReference, shouldInclude, cloneDeep, addTypenameToDocument, isNonEmptyArray, argumentsObjectFromField, isAsScalar, } from "../../utilities/index.js";
+ import { isArray, makeProcessedFieldsMerger, fieldNameFromStoreName, storeValueIsStoreObject, extractFragmentContext, } from "./helpers.js";
+ import { canonicalStringify } from "./object-canon.js";
+ import { normalizeReadFieldOptions } from "./policies.js";
+@@ -56,7 +56,7 @@ var StoreWriter = (function () {
+             if (globalThis.__DEV__ !== false && !context.overwrite) {
+                 var fieldsWithSelectionSets_1 = Object.create(null);
+                 fieldNodeSet.forEach(function (field) {
+-                    if (field.selectionSet) {
++                    if (field.selectionSet && !isAsScalar(field)) {
+                         fieldsWithSelectionSets_1[field.name.value] = true;
+                     }
+                 });
+@@ -123,6 +123,7 @@ var StoreWriter = (function () {
+                     : context, childTree);
+                 var childTypename = void 0;
+                 if (field.selectionSet &&
++                    !isAsScalar(field) &&
+                     (isReference(incomingValue) || storeValueIsStoreObject(incomingValue))) {
+                     childTypename = readField("__typename", incomingValue);
+                 }
+@@ -198,6 +199,9 @@ var StoreWriter = (function () {
+         if (!field.selectionSet || value === null) {
+             return globalThis.__DEV__ !== false ? cloneDeep(value) : value;
+         }
++        if (isAsScalar(field)) {
++            return cloneDeep(value);
++        }
+         if (isArray(value)) {
+             return value.map(function (item, i) {
+                 var value = _this.processFieldValue(item, field, context, getChildMergeTree(mergeTree, i));
+diff --git a/node_modules/@apollo/client/core/LocalState.js b/node_modules/@apollo/client/core/LocalState.js
+index fd02eb5..8f3b415 100644
+--- a/node_modules/@apollo/client/core/LocalState.js
++++ b/node_modules/@apollo/client/core/LocalState.js
+@@ -1,7 +1,7 @@
+ import { __assign, __awaiter, __generator } from "tslib";
+ import { invariant } from "../utilities/globals/index.js";
+ import { visit, BREAK, isSelectionNode } from "graphql";
+-import { argumentsObjectFromField, buildQueryFromSelectionSet, createFragmentMap, getFragmentDefinitions, getMainDefinition, hasDirectives, isField, isInlineFragment, mergeDeep, mergeDeepArray, removeClientSetsFromDocument, resultKeyNameFromField, shouldInclude, } from "../utilities/index.js";
++import { argumentsObjectFromField, buildQueryFromSelectionSet, createFragmentMap, getFragmentDefinitions, getMainDefinition, hasDirectives, isAsScalar, isField, isInlineFragment, mergeDeep, mergeDeepArray, removeClientSetsFromDocument, resultKeyNameFromField, shouldInclude, } from "../utilities/index.js";
+ import { cacheSlot } from "../cache/index.js";
+ var LocalState = (function () {
+     function LocalState(_a) {
+@@ -245,6 +245,9 @@ var LocalState = (function () {
+                         if (!field.selectionSet) {
+                             return result;
+                         }
++                        if (isAsScalar(field)) {
++                            return result;
++                        }
+                         if (result == null) {
+                             return result;
+                         }
+diff --git a/node_modules/@apollo/client/core/core.cjs b/node_modules/@apollo/client/core/core.cjs
+index 2a92a56..afb7352 100644
+--- a/node_modules/@apollo/client/core/core.cjs
++++ b/node_modules/@apollo/client/core/core.cjs
+@@ -986,6 +986,9 @@ var LocalState = (function () {
+                         if (!field.selectionSet) {
+                             return result;
+                         }
++                        if (utilities.isAsScalar(field)) {
++                            return result;
++                        }
+                         if (result == null) {
+                             return result;
+                         }
+diff --git a/node_modules/@apollo/client/core/core.cjs.native.js b/node_modules/@apollo/client/core/core.cjs.native.js
+index 2a92a56..afb7352 100644
+--- a/node_modules/@apollo/client/core/core.cjs.native.js
++++ b/node_modules/@apollo/client/core/core.cjs.native.js
+@@ -986,6 +986,9 @@ var LocalState = (function () {
+                         if (!field.selectionSet) {
+                             return result;
+                         }
++                        if (utilities.isAsScalar(field)) {
++                            return result;
++                        }
+                         if (result == null) {
+                             return result;
+                         }
+diff --git a/node_modules/@apollo/client/utilities/graphql/storeUtils.d.ts b/node_modules/@apollo/client/utilities/graphql/storeUtils.d.ts
+index 3260725..493b1d2 100644
+--- a/node_modules/@apollo/client/utilities/graphql/storeUtils.d.ts
++++ b/node_modules/@apollo/client/utilities/graphql/storeUtils.d.ts
+@@ -33,5 +33,6 @@ export declare function getTypenameFromResult(result: Record<string, any>, selec
+ export declare function isField(selection: SelectionNode): selection is FieldNode;
+ export declare function isInlineFragment(selection: SelectionNode): selection is InlineFragmentNode;
+ export type VariableValue = (node: VariableNode) => any;
++export declare function isAsScalar(selection: SelectionNode): boolean | undefined;
+ export {};
+ //# sourceMappingURL=storeUtils.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/@apollo/client/utilities/graphql/storeUtils.js b/node_modules/@apollo/client/utilities/graphql/storeUtils.js
+index b19fcbc..7ff9e5b 100644
+--- a/node_modules/@apollo/client/utilities/graphql/storeUtils.js
++++ b/node_modules/@apollo/client/utilities/graphql/storeUtils.js
+@@ -216,4 +216,9 @@ export function isField(selection) {
+ export function isInlineFragment(selection) {
+     return selection.kind === "InlineFragment";
+ }
++export function isAsScalar(selection) {
++    return (isField(selection) &&
++        selection.directives &&
++        selection.directives.some(function (selection) { return selection.name && selection.name.value === "asScalar"; }));
++}
+ //# sourceMappingURL=storeUtils.js.map
+\ No newline at end of file
+diff --git a/node_modules/@apollo/client/utilities/index.d.ts b/node_modules/@apollo/client/utilities/index.d.ts
+index 7ecbc70..8cf5e1e 100644
+--- a/node_modules/@apollo/client/utilities/index.d.ts
++++ b/node_modules/@apollo/client/utilities/index.d.ts
+@@ -8,7 +8,7 @@ export { createFragmentMap, getFragmentQueryDocument, getFragmentFromSelection,
+ export { checkDocument, getOperationDefinition, getOperationName, getFragmentDefinitions, getQueryDefinition, getFragmentDefinition, getMainDefinition, getDefaultValues, } from "./graphql/getFromAST.js";
+ export { print } from "./graphql/print.js";
+ export type { StoreObject, AsStoreObject, Reference, StoreValue, Directives, VariableValue, } from "./graphql/storeUtils.js";
+-export { makeReference, isDocumentNode, isReference, isField, isInlineFragment, valueToObjectRepresentation, storeKeyNameFromField, argumentsObjectFromField, resultKeyNameFromField, getStoreKeyName, getTypenameFromResult, } from "./graphql/storeUtils.js";
++export { makeReference, isDocumentNode, isReference, isField, isAsScalar, isInlineFragment, valueToObjectRepresentation, storeKeyNameFromField, argumentsObjectFromField, resultKeyNameFromField, getStoreKeyName, getTypenameFromResult, } from "./graphql/storeUtils.js";
+ export type { RemoveNodeConfig, GetNodeConfig, RemoveDirectiveConfig, GetDirectiveConfig, RemoveArgumentsConfig, GetFragmentSpreadConfig, RemoveFragmentSpreadConfig, RemoveFragmentDefinitionConfig, RemoveVariableDefinitionConfig, } from "./graphql/transform.js";
+ export { addTypenameToDocument, buildQueryFromSelectionSet, removeDirectivesFromDocument, removeConnectionDirectiveFromDocument, removeArgumentsFromDocument, removeFragmentSpreadFromDocument, removeClientSetsFromDocument, } from "./graphql/transform.js";
+ export { isMutationOperation, isQueryOperation, isSubscriptionOperation, } from "./graphql/operations.js";
+diff --git a/node_modules/@apollo/client/utilities/index.js b/node_modules/@apollo/client/utilities/index.js
+index 5bd8945..eb60868 100644
+--- a/node_modules/@apollo/client/utilities/index.js
++++ b/node_modules/@apollo/client/utilities/index.js
+@@ -4,7 +4,7 @@ export { DocumentTransform } from "./graphql/DocumentTransform.js";
+ export { createFragmentMap, getFragmentQueryDocument, getFragmentFromSelection, } from "./graphql/fragments.js";
+ export { checkDocument, getOperationDefinition, getOperationName, getFragmentDefinitions, getQueryDefinition, getFragmentDefinition, getMainDefinition, getDefaultValues, } from "./graphql/getFromAST.js";
+ export { print } from "./graphql/print.js";
+-export { makeReference, isDocumentNode, isReference, isField, isInlineFragment, valueToObjectRepresentation, storeKeyNameFromField, argumentsObjectFromField, resultKeyNameFromField, getStoreKeyName, getTypenameFromResult, } from "./graphql/storeUtils.js";
++export { makeReference, isDocumentNode, isReference, isField, isAsScalar, isInlineFragment, valueToObjectRepresentation, storeKeyNameFromField, argumentsObjectFromField, resultKeyNameFromField, getStoreKeyName, getTypenameFromResult, } from "./graphql/storeUtils.js";
+ export { addTypenameToDocument, buildQueryFromSelectionSet, removeDirectivesFromDocument, removeConnectionDirectiveFromDocument, removeArgumentsFromDocument, removeFragmentSpreadFromDocument, removeClientSetsFromDocument, } from "./graphql/transform.js";
+ export { isMutationOperation, isQueryOperation, isSubscriptionOperation, } from "./graphql/operations.js";
+ export { concatPagination, offsetLimitPagination, relayStylePagination, } from "./policies/pagination.js";
+diff --git a/node_modules/@apollo/client/utilities/utilities.cjs b/node_modules/@apollo/client/utilities/utilities.cjs
+index f63e806..fd20286 100644
+--- a/node_modules/@apollo/client/utilities/utilities.cjs
++++ b/node_modules/@apollo/client/utilities/utilities.cjs
+@@ -381,6 +381,11 @@ function isField(selection) {
+ function isInlineFragment(selection) {
+     return selection.kind === "InlineFragment";
+ }
++function isAsScalar(selection) {
++    return (isField(selection) &&
++        selection.directives &&
++        selection.directives.some(function (selection) { return selection.name && selection.name.value === "asScalar"; }));
++}
+ 
+ function checkDocument(doc) {
+     globals.invariant(doc && doc.kind === "Document", 73);
+@@ -1603,6 +1608,7 @@ exports.hasClientExports = hasClientExports;
+ exports.hasDirectives = hasDirectives;
+ exports.isApolloPayloadResult = isApolloPayloadResult;
+ exports.isArray = isArray;
++exports.isAsScalar = isAsScalar;
+ exports.isDocumentNode = isDocumentNode;
+ exports.isExecutionPatchIncrementalResult = isExecutionPatchIncrementalResult;
+ exports.isExecutionPatchInitialResult = isExecutionPatchInitialResult;
+diff --git a/node_modules/@apollo/client/utilities/utilities.cjs.native.js b/node_modules/@apollo/client/utilities/utilities.cjs.native.js
+index f63e806..fd20286 100644
+--- a/node_modules/@apollo/client/utilities/utilities.cjs.native.js
++++ b/node_modules/@apollo/client/utilities/utilities.cjs.native.js
+@@ -381,6 +381,11 @@ function isField(selection) {
+ function isInlineFragment(selection) {
+     return selection.kind === "InlineFragment";
+ }
++function isAsScalar(selection) {
++    return (isField(selection) &&
++        selection.directives &&
++        selection.directives.some(function (selection) { return selection.name && selection.name.value === "asScalar"; }));
++}
+ 
+ function checkDocument(doc) {
+     globals.invariant(doc && doc.kind === "Document", 73);
+@@ -1603,6 +1608,7 @@ exports.hasClientExports = hasClientExports;
+ exports.hasDirectives = hasDirectives;
+ exports.isApolloPayloadResult = isApolloPayloadResult;
+ exports.isArray = isArray;
++exports.isAsScalar = isAsScalar;
+ exports.isDocumentNode = isDocumentNode;
+ exports.isExecutionPatchIncrementalResult = isExecutionPatchIncrementalResult;
+ exports.isExecutionPatchInitialResult = isExecutionPatchInitialResult;

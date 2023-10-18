@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from "react";
 
-export const Timer = memo(() => {
+export const Clock = memo(() => {
   const [time, setTime] = useState(0);
 
   useEffect(() => {

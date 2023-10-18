@@ -7,7 +7,7 @@ const mockServiceWorker = (): Plugin => ({
   configureServer(server) {
     server.middlewares.use((req, _res, next) => {
       if (req.originalUrl === "/mockServiceWorker.js") {
-        req.url = `/@fs${process.cwd()}public/mockServiceWorker.js`;
+        req.url = `/@fs${process.cwd()}/public/mockServiceWorker.js`;
       }
       next();
     });
@@ -21,8 +21,5 @@ export default defineConfig({
     outDir: "../dist",
   },
   publicDir: "dist",
-  plugins: [
-    react(),
-    ...(process.env.NODE_ENV === "production" ? [] : [mockServiceWorker()]),
-  ],
+  plugins: [react(), mockServiceWorker()],
 });

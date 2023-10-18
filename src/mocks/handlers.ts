@@ -8,17 +8,14 @@ const createData = ({
   numArticle: number;
   numParagraphPerArticle: number;
 }) => ({
-  article: Array.from({ length: numArticle }).map(() => {
-    const articleId = uuid();
-    return {
-      id: articleId,
-      title: `Article (${articleId})`,
-      paragraph: Array.from({ length: numParagraphPerArticle }).map(() => ({
-        id: uuid(),
-        text: "sample",
-      })),
-    };
-  }),
+  article: Array.from({ length: numArticle }).map(() => ({
+    id: uuid(),
+    title: "Article",
+    paragraph: Array.from({ length: numParagraphPerArticle }).map(() => ({
+      id: uuid(),
+      text: "sample",
+    })),
+  })),
 });
 
 const sample01 = createData({ numArticle: 100, numParagraphPerArticle: 100 });
